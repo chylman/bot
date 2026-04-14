@@ -7,7 +7,22 @@
       "Bash(mkdir -p /c/Users/User/Desktop/Vibe-coding/Tg-bot/application/admin-panel/app/auth/update-password)",
       "Bash(mkdir -p /c/Users/User/Desktop/Vibe-coding/Tg-bot/application/admin-panel/app/auth/forgot-password)",
       "Bash(pnpm build:*)",
-      "Bash(pnpm run:*)"
+      "Bash(pnpm run:*)",
+      "Bash(pnpm install:*)",
+      "Bash(curl -s https://api.github.com/repos/supabase/cli/releases/latest)",
+      "Bash(npx supabase:*)",
+      "Bash(curl -L \"https://github.com/supabase/cli/releases/download/v2.90.0/supabase_windows_amd64.tar.gz\" -o /tmp/supabase.tar.gz)",
+      "Bash(tar -xzf /tmp/supabase.tar.gz -C /tmp)",
+      "Bash(ls /tmp/supabase*)",
+      "Bash(cp /tmp/supabase.exe /usr/local/bin/supabase)",
+      "Bash(supabase --version)",
+      "Bash(mkdir -p ~/bin)",
+      "Bash(cp /tmp/supabase.exe ~/bin/supabase)",
+      "Bash(export PATH=\"$HOME/bin:$PATH\")",
+      "Bash(supabase functions:*)",
+      "Bash(git submodule:*)",
+      "Bash(supabase migration:*)",
+      "Bash(cat supabase/migrations/20260414000001*.sql)"
     ]
   }
 }
