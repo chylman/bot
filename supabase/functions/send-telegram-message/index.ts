@@ -3,16 +3,30 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN")!;
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 serve(async (req) => {
+  // Handle CORS preflight sent by the browser before every cross-origin POST
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   // Only accept POST
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: corsHeaders,
+    });
   }
 
   // Require a valid user JWT
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
   }
 
   const supabaseAdmin = createClient(
@@ -23,19 +37,19 @@ serve(async (req) => {
   const jwt = authHeader.replace("Bearer ", "");
   const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(jwt);
   if (authError || !user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
   }
 
   let body: { telegram_chat_id?: number; text?: string; outbox_id?: number };
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
   }
 
   const { telegram_chat_id, text, outbox_id } = body;
   if (!telegram_chat_id || !text) {
-    return new Response(JSON.stringify({ error: "Missing telegram_chat_id or text" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Missing telegram_chat_id or text" }), { status: 400, headers: corsHeaders });
   }
 
   // Verify the requesting user is the active manager for this chat
@@ -48,7 +62,7 @@ serve(async (req) => {
   if (!session || session.manager_id !== user.id) {
     return new Response(
       JSON.stringify({ error: "You are not the active manager for this chat" }),
-      { status: 403 }
+      { status: 403, headers: corsHeaders }
     );
   }
 
@@ -81,7 +95,7 @@ serve(async (req) => {
   }
 
   return new Response(JSON.stringify({ ok: tgData.ok }), {
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
     status: 200,
   });
 });
