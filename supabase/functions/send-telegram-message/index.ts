@@ -9,13 +9,23 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+/** Extract user ID from the JWT that the Supabase platform already verified. */
+function getUserIdFromJwt(authHeader: string): string | null {
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload?.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
-  // Handle CORS preflight sent by the browser before every cross-origin POST
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Only accept POST
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -23,10 +33,22 @@ serve(async (req) => {
     });
   }
 
-  // Require a valid user JWT
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
+      status: 401,
+      headers: corsHeaders,
+    });
+  }
+
+  // The Supabase platform already verified the JWT signature before running this code.
+  // We just decode the payload to get the user ID — no extra API call needed.
+  const userId = getUserIdFromJwt(authHeader);
+  if (!userId) {
+    return new Response(JSON.stringify({ error: "Could not read user from token" }), {
+      status: 401,
+      headers: corsHeaders,
+    });
   }
 
   const supabaseAdmin = createClient(
@@ -34,32 +56,34 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const jwt = authHeader.replace("Bearer ", "");
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(jwt);
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-  }
-
   let body: { telegram_chat_id?: number; text?: string; outbox_id?: number };
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: corsHeaders,
+    });
   }
 
   const { telegram_chat_id, text, outbox_id } = body;
   if (!telegram_chat_id || !text) {
-    return new Response(JSON.stringify({ error: "Missing telegram_chat_id or text" }), { status: 400, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Missing telegram_chat_id or text" }), {
+      status: 400,
+      headers: corsHeaders,
+    });
   }
 
-  // Verify the requesting user is the active manager for this chat
-  const { data: session } = await supabaseAdmin
+  // Verify the requesting user holds the active session for this chat
+  const { data: session, error: sessionError } = await supabaseAdmin
     .from("chat_sessions")
     .select("manager_id")
     .eq("telegram_chat_id", telegram_chat_id)
     .maybeSingle();
 
-  if (!session || session.manager_id !== user.id) {
+  console.log("session lookup:", JSON.stringify({ session, sessionError, userId, telegram_chat_id }));
+
+  if (!session || session.manager_id !== userId) {
     return new Response(
       JSON.stringify({ error: "You are not the active manager for this chat" }),
       { status: 403, headers: corsHeaders }
@@ -76,7 +100,7 @@ serve(async (req) => {
   const tgData = await tgRes.json();
   console.log(`Telegram API response for chat ${telegram_chat_id}:`, JSON.stringify(tgData));
 
-  // Update bot_outbox status so the admin panel reflects delivery
+  // Update bot_outbox status
   if (outbox_id) {
     if (tgData.ok) {
       await supabaseAdmin
