@@ -18,10 +18,28 @@ entity "public.managers" as managers {
   created_at : timestamptz
 }
 
+entity "public.clients" as clients {
+  * telegram_chat_id : bigint <<PK>>
+  --
+  username : text
+  first_seen_at : timestamptz
+  last_seen_at : timestamptz
+  notes : text
+}
+
+entity "public.messages" as messages {
+  * id : uuid <<PK>>
+  --
+  telegram_chat_id : bigint <<FK>>
+  username : text
+  text : text
+  created_at : timestamptz
+}
+
 entity "public.bot_outbox" as bot_outbox {
   * id : bigint <<PK>>
   --
-  telegram_chat_id : bigint
+  telegram_chat_id : bigint <<FK>>
   text : text
   admin_uid : uuid <<FK>>
   status : text
@@ -30,17 +48,20 @@ entity "public.bot_outbox" as bot_outbox {
   error_message : text
 }
 
-entity "public.messages" as messages {
-  * id : uuid <<PK>>
+entity "public.chat_sessions" as chat_sessions {
+  * telegram_chat_id : bigint <<PK, FK>>
   --
-  telegram_chat_id : bigint
-  username : text
-  text : text
-  created_at : timestamptz
+  manager_id : uuid <<FK>>
+  connected_at : timestamptz
 }
 
 ' ─── Relationships ──────────────────────────────────────────────────────────
-auth_users ||--o| managers     : "1 user → 0..1 manager"
-auth_users ||--o{ bot_outbox   : "1 user → 0..* outbox msgs"
+auth_users  ||--o|  managers       : "1 user → 0..1 manager"
+auth_users  ||--o{  bot_outbox     : "1 user → 0..* outbox msgs"
+auth_users  ||--o|  chat_sessions  : "1 user → 0..1 active session"
+
+clients     ||--o{  messages       : "1 client → 0..* messages"
+clients     ||--o{  bot_outbox     : "1 client → 0..* outbox msgs"
+clients     ||--o|  chat_sessions  : "1 client → 0..1 active session"
 
 @enduml
