@@ -1,0 +1,46 @@
+@startuml ER Diagram
+
+skinparam linetype ortho
+
+' ─── auth schema (Supabase built-in) ───────────────────────────────────────
+entity "auth.users" as auth_users <<auth schema>> {
+  * id : uuid <<PK>>
+  --
+  email : text
+  created_at : timestamptz
+}
+
+' ─── public schema ──────────────────────────────────────────────────────────
+entity "public.managers" as managers {
+  * user_id : uuid <<PK, FK>>
+  --
+  name : text
+  created_at : timestamptz
+}
+
+entity "public.bot_outbox" as bot_outbox {
+  * id : bigint <<PK>>
+  --
+  telegram_chat_id : bigint
+  text : text
+  admin_uid : uuid <<FK>>
+  status : text
+  created_at : timestamptz
+  sent_at : timestamptz
+  error_message : text
+}
+
+entity "public.messages" as messages {
+  * id : uuid <<PK>>
+  --
+  telegram_chat_id : bigint
+  username : text
+  text : text
+  created_at : timestamptz
+}
+
+' ─── Relationships ──────────────────────────────────────────────────────────
+auth_users ||--o| managers     : "1 user → 0..1 manager"
+auth_users ||--o{ bot_outbox   : "1 user → 0..* outbox msgs"
+
+@enduml

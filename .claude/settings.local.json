@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm add:*)",
+      "Bash(mkdir -p /c/Users/User/Desktop/Vibe-coding/Tg-bot/application/admin-panel/lib/supabase)",
+      "Bash(mkdir -p /c/Users/User/Desktop/Vibe-coding/Tg-bot/application/admin-panel/app/auth/callback)",
+      "Bash(mkdir -p /c/Users/User/Desktop/Vibe-coding/Tg-bot/application/admin-panel/app/auth/update-password)",
+      "Bash(mkdir -p /c/Users/User/Desktop/Vibe-coding/Tg-bot/application/admin-panel/app/auth/forgot-password)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm run:*)"
+    ]
+  }
+}

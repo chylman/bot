@@ -1,0 +1,49 @@
+@startuml c4-component-admin
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Component Diagram — Admin Panel (Next.js)
+
+Person(admin, "Admin")
+System_Ext(supabase, "Supabase", "Auth / PostgREST / Realtime")
+
+Container_Boundary(adminApp, "Admin Panel — Next.js 16") {
+
+    Component(mainPage, "MainPage", "React Server Component\napp/page.tsx", "Auth-guards the root route. Fetches all unique telegram_chat_id from messages. Renders chat sidebar and selected chat.")
+
+    Component(chatPage, "ChatPage", "React Server Component\napp/chat/[chatId]/page.tsx", "Auth-guards the chat route. Passes chatId to Chat component.")
+
+    Component(chat, "Chat", "React Client Component\napp/chat/[chatId]/Chat.tsx", "Loads messages + bot_outbox in parallel. Subscribes to realtime INSERTs on both tables. Merges and sorts messages. Renders chat thread. Submits admin replies to bot_outbox.")
+
+    Component(loginPage, "LoginPage", "Next.js page\napp/login/page.tsx", "Public route rendering the LoginForm.")
+
+    Component(loginForm, "LoginForm", "React Client Component\napp/login/LoginForm.tsx", "Collects email + password. Calls signIn server action. Shows errors.")
+
+    Component(authActions, "Auth Server Actions", "Next.js Server Actions\napp/actions/auth.ts", "signIn() calls supabase.auth.signInWithPassword\nsignOut() calls supabase.auth.signOut\nsendReset() calls supabase.auth.resetPasswordForEmail")
+
+    Component(forgotPassword, "ForgotPasswordPage", "React Client Component\napp/forgot-password/send-form.tsx", "Calls supabase.auth.resetPasswordForEmail(). Sends magic link to admin email.")
+
+    Component(authCallback, "AuthCallbackPage", "React Client Component\napp/auth/callback/page.tsx", "Exchanges PKCE code for session. Handles hash-based tokens. Renders password-reset form. Calls supabase.auth.updateUser({ password }).")
+
+    Component(browserClient, "SupabaseBrowserClient", "TypeScript module\nlib/supabase.ts", "createBrowserClient with PKCE flow. Used by all client components for REST, Realtime, and Auth.")
+
+    Component(serverClient, "SupabaseServerClient", "TypeScript module\nlib/supabaseServer.ts", "createServerClient with cookie read/write for SSR. Used by server components and server actions.")
+}
+
+Rel(admin, loginForm, "Enters credentials")
+Rel(loginForm, authActions, "Calls signIn()", "Server Action")
+Rel(authActions, serverClient, "Uses for auth")
+
+Rel(admin, forgotPassword, "Requests reset")
+Rel(forgotPassword, browserClient, "resetPasswordForEmail()")
+
+Rel(authCallback, browserClient, "exchangeCodeForSession() / updateUser()")
+
+Rel(mainPage, serverClient, "Checks session / Fetches chat list")
+Rel(chatPage, serverClient, "Checks session")
+
+Rel(chat, browserClient, "GET messages / GET bot_outbox / POST bot_outbox / REALTIME subscribe")
+
+Rel(browserClient, supabase, "HTTPS + WSS")
+Rel(serverClient, supabase, "HTTPS")
+
+@enduml

@@ -1,0 +1,41 @@
+@startuml c4-component-supabase
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Component Diagram — Supabase Backend
+
+System_Ext(telegram, "Telegram Bot API")
+System_Ext(adminPanel, "Admin Panel")
+
+Container_Boundary(sb, "Supabase") {
+
+    Component(webhookFn, "telegram-webhook Edge Function", "Deno / TypeScript\nsupabase/functions/telegram-webhook/index.ts", "Entry point for all Telegram webhook events. Validates payload. Stores user messages. Sends echo via Bot API.")
+
+    Component(messagesTable, "messages table", "PostgreSQL Table", "Stores all incoming Telegram messages.\nColumns: id, telegram_chat_id, username, text, created_at\nRLS: SELECT open to all authenticated users")
+
+    Component(botOutboxTable, "bot_outbox table", "PostgreSQL Table", "Outbound message queue.\nColumns: id, telegram_chat_id, text, admin_uid, status, created_at, sent_at, error_message\nStatus: pending -> sent | error")
+
+    Component(rlsPolicies, "Row Level Security Policies", "PostgreSQL RLS", "messages: SELECT for authenticated\nbot_outbox SELECT: authenticated\nbot_outbox INSERT: authenticated\nbot_outbox UPDATE: service_role only")
+
+    Component(goTrue, "Auth Service (GoTrue)", "Supabase Auth", "Issues JWT access tokens (1h expiry). Handles PKCE flows, refresh tokens, password reset emails.")
+
+    Component(realtimeService, "Realtime Service", "Supabase Realtime / WebSocket", "Listens to WAL on messages and bot_outbox tables. Broadcasts INSERT events to subscribed admin clients over WSS.")
+
+    Component(postGREST, "PostgREST API", "Auto REST Layer", "Translates HTTP requests to SQL. Enforces RLS using JWT claims. Serves GET/POST for messages and bot_outbox.")
+}
+
+Rel(telegram, webhookFn, "POST webhook payload", "HTTPS")
+Rel(webhookFn, messagesTable, "INSERT message", "SQL via service_role")
+Rel(webhookFn, telegram, "POST /sendMessage (echo)", "HTTPS")
+
+Rel(adminPanel, goTrue, "signIn / signOut / resetPassword", "HTTPS")
+Rel(adminPanel, postGREST, "GET messages / GET bot_outbox / POST bot_outbox", "HTTPS + Bearer JWT")
+Rel(adminPanel, realtimeService, "Subscribe to INSERT events", "WSS + JWT")
+
+Rel(postGREST, messagesTable, "SELECT / INSERT", "SQL")
+Rel(postGREST, botOutboxTable, "SELECT / INSERT / UPDATE", "SQL")
+Rel(postGREST, rlsPolicies, "Enforces per request")
+
+Rel(realtimeService, messagesTable, "Watches WAL stream")
+Rel(realtimeService, botOutboxTable, "Watches WAL stream")
+
+@enduml

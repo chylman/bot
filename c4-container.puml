@@ -1,0 +1,36 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Container Diagram — Telegram Bot System
+
+Person(admin, "Admin", "Manages conversations")
+Person(tgUser, "Telegram User", "Sends Telegram messages")
+System_Ext(telegram, "Telegram", "Bot API + messaging platform")
+
+System_Boundary(sys, "Telegram Bot System") {
+
+    Container(adminApp, "Admin Panel", "Next.js 16 / React 19 / TypeScript", "Server-rendered + client-hydrated SPA. Lists chats, shows message threads, allows admin replies")
+
+    Container_Boundary(sb, "Supabase") {
+        Container(webhookFn, "telegram-webhook", "Deno Edge Function", "Receives Telegram webhook POSTs, stores incoming messages, echoes reply via Bot API")
+        ContainerDb(db, "PostgreSQL 17", "Supabase Managed DB", "Stores messages and bot_outbox tables with RLS policies")
+        Container(auth, "Supabase Auth (GoTrue)", "Auth Service", "Manages admin accounts, PKCE sessions, JWT tokens, password reset")
+        Container(realtime, "Supabase Realtime", "WebSocket Service", "Broadcasts INSERT events on messages and bot_outbox to subscribed clients")
+        Container(postgrest, "PostgREST", "Auto REST API", "Exposes messages and bot_outbox tables as REST endpoints, enforces RLS")
+    }
+}
+
+Rel(tgUser, telegram, "Sends message")
+Rel(telegram, webhookFn, "POST /telegram-webhook", "HTTPS")
+Rel(webhookFn, db, "INSERT into messages", "SQL")
+Rel(webhookFn, telegram, "POST /sendMessage (echo)", "HTTPS / Bot API")
+
+Rel(admin, adminApp, "Uses browser", "HTTPS")
+Rel(adminApp, auth, "signIn / signOut / resetPassword", "HTTPS")
+Rel(adminApp, postgrest, "GET messages, GET/POST bot_outbox", "HTTPS + JWT")
+Rel(adminApp, realtime, "Subscribe to INSERT events", "WSS")
+
+Rel(db, realtime, "Triggers change events", "Internal")
+Rel(postgrest, db, "Queries & mutations", "SQL")
+
+@enduml

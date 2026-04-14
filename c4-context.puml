@@ -1,0 +1,22 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title System Context — Telegram Bot + Admin Panel
+
+Person(admin, "Admin", "Manages conversations via the admin panel")
+Person(tgUser, "Telegram User", "Sends messages in Telegram")
+
+System_Boundary(sys, "Telegram Bot System") {
+    System(adminPanel, "Admin Panel", "Next.js 16 web app for reading user messages and sending replies")
+    System(supabase, "Supabase Backend", "PostgreSQL database, Auth, Realtime, and Edge Functions")
+}
+
+System_Ext(telegram, "Telegram", "Messaging platform & Bot API")
+
+Rel(tgUser, telegram, "Sends message")
+Rel(telegram, supabase, "Delivers webhook (POST)", "HTTPS")
+Rel(supabase, telegram, "Sends reply via Bot API", "HTTPS")
+Rel(admin, adminPanel, "Views chats, sends replies", "Browser")
+Rel(adminPanel, supabase, "Reads messages, writes outbox, auth", "HTTPS / WSS")
+
+@enduml

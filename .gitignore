@@ -1,0 +1,12 @@
+# Ignore all environment files across the repository
+# Common dotenv files
+.env
+.env.*
+
+# Files ending with .env (e.g., local.env, development.env)
+*.env
+*.env.*
+
+# direnv
+.envrc
+.env.local
