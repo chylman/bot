@@ -22,7 +22,8 @@
       "Bash(supabase functions:*)",
       "Bash(git submodule:*)",
       "Bash(supabase migration:*)",
-      "Bash(cat supabase/migrations/20260414000001*.sql)"
+      "Bash(cat supabase/migrations/20260414000001*.sql)",
+      "Bash(xargs ls:*)"
     ]
   }
 }

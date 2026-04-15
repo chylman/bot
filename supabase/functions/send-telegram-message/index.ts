@@ -56,7 +56,7 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  let body: { telegram_chat_id?: number; text?: string; outbox_id?: number };
+  let body: { telegram_chat_id?: number; text?: string; message_id?: string };
   try {
     body = await req.json();
   } catch {
@@ -66,7 +66,7 @@ serve(async (req) => {
     });
   }
 
-  const { telegram_chat_id, text, outbox_id } = body;
+  const { telegram_chat_id, text, message_id } = body;
   if (!telegram_chat_id || !text) {
     return new Response(JSON.stringify({ error: "Missing telegram_chat_id or text" }), {
       status: 400,
@@ -100,21 +100,21 @@ serve(async (req) => {
   const tgData = await tgRes.json();
   console.log(`Telegram API response for chat ${telegram_chat_id}:`, JSON.stringify(tgData));
 
-  // Update bot_outbox status
-  if (outbox_id) {
+  // Update message delivery status
+  if (message_id) {
     if (tgData.ok) {
       await supabaseAdmin
-        .from("bot_outbox")
+        .from("messages")
         .update({ status: "sent", sent_at: new Date().toISOString() })
-        .eq("id", outbox_id);
+        .eq("id", message_id);
     } else {
       await supabaseAdmin
-        .from("bot_outbox")
+        .from("messages")
         .update({
           status: "error",
           error_message: tgData.description ?? "Telegram API error",
         })
-        .eq("id", outbox_id);
+        .eq("id", message_id);
     }
   }
 
