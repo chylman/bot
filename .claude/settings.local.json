@@ -23,7 +23,9 @@
       "Bash(git submodule:*)",
       "Bash(supabase migration:*)",
       "Bash(cat supabase/migrations/20260414000001*.sql)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
     ]
   }
 }
