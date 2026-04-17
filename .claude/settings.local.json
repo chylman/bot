@@ -27,7 +27,8 @@
       "Bash(npx tsc:*)",
       "Bash(./node_modules/.bin/tsc --noEmit)",
       "Bash(supabase db *)",
-      "Bash(supabase secrets *)"
+      "Bash(supabase secrets *)",
+      "Bash(curl *)"
     ]
   }
 }
