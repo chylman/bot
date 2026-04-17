@@ -25,7 +25,8 @@
       "Bash(cat supabase/migrations/20260414000001*.sql)",
       "Bash(xargs ls:*)",
       "Bash(npx tsc:*)",
-      "Bash(./node_modules/.bin/tsc --noEmit)"
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(supabase db *)"
     ]
   }
 }
