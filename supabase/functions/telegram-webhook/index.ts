@@ -70,14 +70,25 @@ serve(async (req) => {
     return new Response("OK", { status: 200 });
   }
 
-  // 5. Приветствие для новых пользователей
+  // 5. Приветствие для новых пользователей (отправляем до auto-reply)
   if (isNewUser) {
     await sendTelegramMessage(
       chatId,
-      `Привет, ${firstName}! 👋\n\nДобро пожаловать! Ваше сообщение получено, скоро с вами свяжется менеджер.`
+      `Привет, ${firstName}! 👋\n\nДобро пожаловать! Задайте ваш вопрос, и я постараюсь помочь.`
     );
     console.log(`Приветственное сообщение отправлено в чат ${chatId}`);
   }
+
+  // 6. Запускаем auto-reply асинхронно (не ждём — Telegram не должен ждать)
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  fetch(`${supabaseUrl}/functions/v1/auto-reply`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+    },
+    body: JSON.stringify({ chatId, userText: message.text }),
+  }).catch((err) => console.error("auto-reply invoke error:", err));
 
   return new Response("OK", { status: 200 });
 });
