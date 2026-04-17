@@ -408,3 +408,13 @@ entrypoint = "./functions/telegram-webhook/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/send-telegram-message/index.ts"
+
+[functions.auto-reply]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/auto-reply/index.ts"
+
+[functions.generate-embedding]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/generate-embedding/index.ts"

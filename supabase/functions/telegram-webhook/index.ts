@@ -79,16 +79,21 @@ serve(async (req) => {
     console.log(`Приветственное сообщение отправлено в чат ${chatId}`);
   }
 
-  // 6. Запускаем auto-reply асинхронно (не ждём — Telegram не должен ждать)
+  // 6. Вызываем auto-reply и ждём — Telegram timeout 60s, DeepSeek ~3-5s
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  fetch(`${supabaseUrl}/functions/v1/auto-reply`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-    },
-    body: JSON.stringify({ chatId, userText: message.text }),
-  }).catch((err) => console.error("auto-reply invoke error:", err));
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/auto-reply`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({ chatId, userText: message.text }),
+    });
+    console.log(`auto-reply status: ${res.status}`);
+  } catch (err) {
+    console.error("auto-reply invoke error:", err);
+  }
 
   return new Response("OK", { status: 200 });
 });

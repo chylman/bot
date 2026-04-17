@@ -28,7 +28,10 @@
       "Bash(./node_modules/.bin/tsc --noEmit)",
       "Bash(supabase db *)",
       "Bash(supabase secrets *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(supabase projects *)",
+      "Bash(npx vercel *)",
+      "Bash(supabase --experimental migration squash --dry-run)"
     ]
   }
 }
