@@ -12,7 +12,7 @@ entity "auth.users" as auth_users <<auth schema>> {
 
 ' ─── public schema ──────────────────────────────────────────────────────────
 entity "public.managers" as managers {
-  * user_id : uuid <<PK, FK>>
+  * user_id : uuid <<PK, FK → auth.users>>
   --
   name : text
   created_at : timestamptz
@@ -30,38 +30,80 @@ entity "public.clients" as clients {
 entity "public.messages" as messages {
   * id : uuid <<PK>>
   --
-  telegram_chat_id : bigint <<FK>>
+  telegram_chat_id : bigint <<FK → clients>>
   username : text
   text : text
-  created_at : timestamptz
-}
-
-entity "public.bot_outbox" as bot_outbox {
-  * id : bigint <<PK>>
-  --
-  telegram_chat_id : bigint <<FK>>
-  text : text
-  admin_uid : uuid <<FK>>
+  sender : text  ' user | manager | bot
+  admin_uid : uuid
   status : text
-  created_at : timestamptz
   sent_at : timestamptz
   error_message : text
+  created_at : timestamptz
 }
 
 entity "public.chat_sessions" as chat_sessions {
-  * telegram_chat_id : bigint <<PK, FK>>
+  * telegram_chat_id : bigint <<PK, FK → clients>>
   --
-  manager_id : uuid <<FK>>
+  manager_id : uuid <<FK → managers>>
   connected_at : timestamptz
 }
 
-' ─── Relationships ──────────────────────────────────────────────────────────
-auth_users  ||--o|  managers       : "1 user → 0..1 manager"
-auth_users  ||--o{  bot_outbox     : "1 user → 0..* outbox msgs"
-auth_users  ||--o|  chat_sessions  : "1 user → 0..1 active session"
+entity "public.tickets" as tickets {
+  * id : uuid <<PK>>
+  --
+  manager_id : uuid <<FK → managers>>
+  telegram_chat_id : bigint <<FK → clients, nullable>>
+  title : text
+  description : text
+  due_at : timestamptz
+  status : text  ' open | in_progress | closed
+  priority : text  ' low | normal | high
+  created_at : timestamptz
+  updated_at : timestamptz
+}
 
-clients     ||--o{  messages       : "1 client → 0..* messages"
-clients     ||--o{  bot_outbox     : "1 client → 0..* outbox msgs"
-clients     ||--o|  chat_sessions  : "1 client → 0..1 active session"
+entity "public.knowledge_base" as knowledge_base {
+  * id : uuid <<PK>>
+  --
+  question : text
+  answer : text
+  category : text
+  embedding : vector(384)
+  is_active : boolean
+  created_at : timestamptz
+  updated_at : timestamptz
+}
+
+entity "public.ai_usage" as ai_usage {
+  * date : date <<PK>>
+  --
+  calls : integer
+  tokens_used : integer
+  updated_at : timestamptz
+}
+
+' ─── Views ──────────────────────────────────────────────────────────────────
+entity "public.clients_with_last_message" as clients_view <<view>> {
+  telegram_chat_id : bigint
+  username : text
+  first_seen_at : timestamptz
+  last_seen_at : timestamptz
+  notes : text
+  last_message_text : text
+  last_message_sender : text
+  last_message_at : timestamptz
+}
+
+' ─── Relationships ──────────────────────────────────────────────────────────
+auth_users      ||--o|  managers       : "1 user → 0..1 manager"
+
+managers        ||--o{  chat_sessions  : "1 manager → 0..* active sessions"
+managers        ||--o{  tickets        : "1 manager → 0..* tickets"
+
+clients         ||--o{  messages       : "1 client → 0..* messages"
+clients         ||--o|  chat_sessions  : "1 client → 0..1 active session"
+clients         ||--o{  tickets        : "1 client → 0..* tickets (nullable)"
+
+clients         ||--o|  clients_view   : "source"
 
 @enduml

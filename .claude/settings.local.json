@@ -31,7 +31,8 @@
       "Bash(curl *)",
       "Bash(supabase projects *)",
       "Bash(npx vercel *)",
-      "Bash(supabase --experimental migration squash --dry-run)"
+      "Bash(supabase --experimental migration squash --dry-run)",
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\" && cat \"{}\"')"
     ]
   }
 }
