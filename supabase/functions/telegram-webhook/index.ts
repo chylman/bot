@@ -47,7 +47,6 @@ serve(async (req) => {
   // 3. Сохраняем сообщение в БД
   const { error } = await supabase.from("messages").insert({
     telegram_chat_id: chatId,
-    username: firstName,
     text: message.text,
     sender: "user",
   });

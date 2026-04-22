@@ -31,7 +31,6 @@ entity "public.messages" as messages {
   * id : uuid <<PK>>
   --
   telegram_chat_id : bigint <<FK → clients>>
-  username : text
   text : text
   sender : text  ' user | manager | bot
   admin_uid : uuid
