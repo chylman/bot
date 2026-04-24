@@ -56,7 +56,7 @@ serve(async (req) => {
   let kbContext = "";
   if (kb_top_k > 0) {
     try {
-      const embModel = new Supabase.ai.Session("gte-small");
+      const embModel = new Supabase.ai.Session("gte-large");
       const queryEmbedding = await embModel.run(userText, { mean_pool: true, normalize: true });
 
       const { data: kbRows } = await supabase.rpc("match_knowledge_base", {
