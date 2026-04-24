@@ -26,7 +26,7 @@ serve(async (req) => {
   const textToEmbed = `${entry.question}\n${entry.answer}`;
 
   try {
-    const model = new Supabase.ai.Session("gte-small");
+    const model = new Supabase.ai.Session("gte-large");
     const embedding = await model.run(textToEmbed, { mean_pool: true, normalize: true });
 
     const { error: updateError } = await supabase
