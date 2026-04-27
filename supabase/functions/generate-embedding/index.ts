@@ -7,6 +7,23 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+async function getEmbedding(text: string): Promise<number[]> {
+  const res = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+    },
+    body: JSON.stringify({ model: "text-embedding-3-small", input: text }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenAI API error ${res.status}: ${err}`);
+  }
+  const data = await res.json();
+  return data.data[0].embedding;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
 
@@ -18,7 +35,6 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Fetch the KB entry
   const { data: entry, error: fetchError } = await supabase
     .from("knowledge_base")
     .select("id, question, answer")
@@ -30,12 +46,9 @@ serve(async (req) => {
     return new Response("Entry not found", { status: 404, headers: CORS });
   }
 
-  // Generate embedding from question + answer combined for richer context
-  const textToEmbed = `${entry.question}\n${entry.answer}`;
-
   try {
-    const model = new Supabase.ai.Session("gte-large");
-    const embedding = await model.run(textToEmbed, { mean_pool: true, normalize: true });
+    const textToEmbed = `${entry.question}\n${entry.answer}`;
+    const embedding = await getEmbedding(textToEmbed);
 
     const { error: updateError } = await supabase
       .from("knowledge_base")
@@ -44,7 +57,7 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("Failed to save embedding:", updateError.message);
-      return new Response("Failed to save embedding", { status: 500, headers: CORS });
+      return new Response(`Failed to save embedding: ${updateError.message}`, { status: 500, headers: CORS });
     }
 
     console.log(`Embedding generated for KB entry ${id}`);

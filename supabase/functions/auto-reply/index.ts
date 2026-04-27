@@ -57,8 +57,17 @@ serve(async (req) => {
   let kbContext = "";
   if (kb_top_k > 0) {
     try {
-      const embModel = new Supabase.ai.Session("gte-large");
-      const queryEmbedding = await embModel.run(userText, { mean_pool: true, normalize: true });
+      const embRes = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+        },
+        body: JSON.stringify({ model: "text-embedding-3-small", input: userText }),
+      });
+      if (!embRes.ok) throw new Error(`OpenAI embeddings error: ${embRes.status}`);
+      const embData = await embRes.json();
+      const queryEmbedding = embData.data[0].embedding;
 
       const { data: kbRows } = await supabase.rpc("match_knowledge_base", {
         query_embedding: queryEmbedding,
