@@ -1,9 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+
   const { id } = await req.json();
-  if (!id) return new Response("Missing id", { status: 400 });
+  if (!id) return new Response("Missing id", { status: 400, headers: CORS });
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -19,7 +27,7 @@ serve(async (req) => {
 
   if (fetchError || !entry) {
     console.error("Entry not found:", fetchError?.message);
-    return new Response("Entry not found", { status: 404 });
+    return new Response("Entry not found", { status: 404, headers: CORS });
   }
 
   // Generate embedding from question + answer combined for richer context
@@ -36,13 +44,13 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("Failed to save embedding:", updateError.message);
-      return new Response("Failed to save embedding", { status: 500 });
+      return new Response("Failed to save embedding", { status: 500, headers: CORS });
     }
 
     console.log(`Embedding generated for KB entry ${id}`);
-    return new Response("OK", { status: 200 });
+    return new Response("OK", { status: 200, headers: CORS });
   } catch (err) {
     console.error("Embedding generation error:", err);
-    return new Response("Embedding error", { status: 500 });
+    return new Response("Embedding error", { status: 500, headers: CORS });
   }
 });
