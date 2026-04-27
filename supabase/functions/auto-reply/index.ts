@@ -34,6 +34,7 @@ serve(async (req) => {
     history_count,
     kb_top_k,
     similarity_thr,
+    similarity_exact_thr,
     fallback_msg,
   } = cfg;
 
@@ -66,9 +67,22 @@ serve(async (req) => {
       });
 
       if (kbRows && kbRows.length > 0) {
+        const top = kbRows[0];
+        if (top.similarity >= similarity_exact_thr) {
+          // High-confidence match — send the stored answer directly, skip AI.
+          console.log(`KB: exact match (similarity=${top.similarity.toFixed(3)}), bypassing AI`);
+          await supabase.from("messages").insert({
+            telegram_chat_id: chatId,
+            text: top.answer,
+            sender: "bot",
+          });
+          await sendTelegram(chatId, top.answer);
+          return new Response("OK", { status: 200 });
+        }
+
         const entries = kbRows.map((r: any) => `В: ${r.question}\nО: ${r.answer}`).join("\n\n");
         kbContext = `\n\nБаза знаний (используй эти ответы если они релевантны):\n${entries}`;
-        console.log(`KB: found ${kbRows.length} relevant entries`);
+        console.log(`KB: found ${kbRows.length} context entries (top similarity=${top.similarity.toFixed(3)})`);
       } else {
         console.log("KB: no relevant entries found");
       }
