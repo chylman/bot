@@ -50,7 +50,8 @@ serve(async (req) => {
     console.log(`Embedding generated for KB entry ${id}`);
     return new Response("OK", { status: 200, headers: CORS });
   } catch (err) {
-    console.error("Embedding generation error:", err);
-    return new Response("Embedding error", { status: 500, headers: CORS });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Embedding generation error:", msg);
+    return new Response(`Embedding error: ${msg}`, { status: 500, headers: CORS });
   }
 });
