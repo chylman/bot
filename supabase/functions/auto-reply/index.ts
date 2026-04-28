@@ -36,6 +36,10 @@ serve(async (req) => {
     similarity_thr,
     similarity_exact_thr,
     fallback_msg,
+    greeting_enabled,
+    greeting_msg,
+    greeting_thr,
+    greeting_embedding,
   } = cfg;
 
   // ── 1. Проверяем дневной лимит ───────────────────────────────────────────
@@ -53,9 +57,10 @@ serve(async (req) => {
     return new Response("OK", { status: 200 });
   }
 
-  // ── 2. Векторный поиск по базе знаний ───────────────────────────────────
-  let kbContext = "";
-  if (kb_top_k > 0) {
+  // ── 2. Проверка приветствия ──────────────────────────────────────────────
+  let userEmbedding: number[] | null = null;
+
+  if ((greeting_enabled && greeting_embedding) || kb_top_k > 0) {
     try {
       const embRes = await fetch("https://api.openai.com/v1/embeddings", {
         method: "POST",
@@ -65,12 +70,53 @@ serve(async (req) => {
         },
         body: JSON.stringify({ model: "text-embedding-3-small", input: userText }),
       });
-      if (!embRes.ok) throw new Error(`OpenAI embeddings error: ${embRes.status}`);
-      const embData = await embRes.json();
-      const queryEmbedding = embData.data[0].embedding;
+      if (embRes.ok) {
+        const embData = await embRes.json();
+        userEmbedding = embData.data[0].embedding;
+      }
+    } catch (err) {
+      console.error("Embedding error:", err);
+    }
+  }
+
+  if (greeting_enabled && greeting_embedding && userEmbedding) {
+    const greetingVec: number[] = typeof greeting_embedding === "string"
+      ? JSON.parse(greeting_embedding)
+      : greeting_embedding;
+    let dot = 0;
+    for (let i = 0; i < userEmbedding.length; i++) dot += userEmbedding[i] * greetingVec[i];
+    if (dot >= greeting_thr) {
+      console.log(`Greeting match (similarity=${dot.toFixed(3)}), sending greeting_msg`);
+      await supabase.from("messages").insert({
+        telegram_chat_id: chatId,
+        text: greeting_msg,
+        sender: "bot",
+      });
+      await sendTelegram(chatId, greeting_msg);
+      return new Response("OK", { status: 200 });
+    }
+  }
+
+  // ── 3. Векторный поиск по базе знаний ───────────────────────────────────
+  let kbContext = "";
+  if (kb_top_k > 0) {
+    try {
+      if (!userEmbedding) {
+        const embRes = await fetch("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+          },
+          body: JSON.stringify({ model: "text-embedding-3-small", input: userText }),
+        });
+        if (!embRes.ok) throw new Error(`OpenAI embeddings error: ${embRes.status}`);
+        const embData = await embRes.json();
+        userEmbedding = embData.data[0].embedding;
+      }
 
       const { data: kbRows } = await supabase.rpc("match_knowledge_base", {
-        query_embedding: queryEmbedding,
+        query_embedding: userEmbedding,
         match_threshold: similarity_thr,
         match_count: kb_top_k,
       });
